@@ -1,40 +1,31 @@
 package observatoriodeviolencia.msauth.service;
 
 import lombok.RequiredArgsConstructor;
-import observatoriodeviolencia.msauth.client.UserAuthClient;
-import observatoriodeviolencia.msauth.dto.AuthValidationRequest;
-import observatoriodeviolencia.msauth.dto.AuthValidationResponse;
 import observatoriodeviolencia.msauth.dto.LoginRequest;
 import observatoriodeviolencia.msauth.dto.TokenResponse;
-import observatoriodeviolencia.msauth.exceptions.InvalidCredentialsException;
+import observatoriodeviolencia.msauth.model.User;
+import observatoriodeviolencia.msauth.repository.UserRepository;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserAuthClient userAuthClient;
-    private final TokenService tokenService;
+    private final UserRepository  userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TokenService    tokenService;
 
     public TokenResponse login(LoginRequest request) {
+        User user = userRepository.findByMail(request.username())
+                .filter(User::isActive)
+                .orElseThrow(() -> new BadCredentialsException("Credenciais inválidas"));
 
-        AuthValidationResponse auth =
-                userAuthClient.validate(
-                        new AuthValidationRequest(
-                                request.username(),
-                                request.password()
-                        )
-                );
-
-        if (!auth.valid()) {
-            throw new InvalidCredentialsException();
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new BadCredentialsException("Credenciais inválidas");
         }
 
-        String token = tokenService.generateToken(
-                auth.userId(),
-                auth.roles()
-        );
-
-        return new TokenResponse(token);
+        return new TokenResponse(tokenService.generateToken(user));
     }
 }

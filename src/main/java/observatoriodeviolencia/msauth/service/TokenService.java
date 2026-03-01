@@ -1,6 +1,7 @@
 package observatoriodeviolencia.msauth.service;
 
 import lombok.RequiredArgsConstructor;
+import observatoriodeviolencia.msauth.model.User;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -16,19 +17,19 @@ public class TokenService {
 
     private final JwtEncoder jwtEncoder;
 
-    public String generateToken(String subject, List<String> scopes) {
-
+    public String generateToken(User user) {
         Instant now = Instant.now();
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("auth-service")
-                .subject(subject)
+                .subject(user.getEmail())
                 .issuedAt(now)
                 .expiresAt(now.plus(1, ChronoUnit.HOURS))
-                .claim("scope", scopes)
+                .claim("scope", user.getRole().name())
+                .claim("userId", user.getId().toString())
+                .claim("userMail", user.getEmail())
                 .build();
 
-        return jwtEncoder.encode(JwtEncoderParameters.from(claims))
-                .getTokenValue();
+        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 }
